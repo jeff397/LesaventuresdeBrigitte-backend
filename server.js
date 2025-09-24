@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const fileUpload = require("express-fileupload");
+const fileUpload = require("express-fileupload"); // <- pour gérer les fichiers
 const { connectDB, connectCloudinary } = require("./config/db");
 const authRoutes = require("./routes/auth");
 const articleRoutes = require("./routes/articles");
@@ -13,37 +13,31 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Middlewares
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173", // pour le dev local
-      "https://ton-frontend.vercel.app", // ton site en prod
-    ],
-    credentials: true,
-  })
-);
+// Middlewares
+app.use(cors());
 app.use(express.json());
-app.use(fileUpload({ useTempFiles: true }));
+app.use(fileUpload({ useTempFiles: true })); // important pour req.files
 
-// ✅ Routes
+// Routes existantes
 app.use("/api/auth", authRoutes);
 app.use("/api/articles", articleRoutes);
 app.use("/api/categories", categoryRoutes);
+
 app.use("/api/comments", commentRoutes);
 
-// ✅ Upload Cloudinary
+// Connect DB et Cloudinary
+connectDB();
+connectCloudinary();
+
 app.post("/api/upload", async (req, res) => {
   try {
-    if (!req.files || !req.files.file) {
+    if (!req.files || !req.files.file)
       return res.status(400).json({ message: "No file uploaded" });
-    }
-
     const file = req.files.file;
     const result = await cloudinary.uploader.upload(file.tempFilePath, {
       folder: "articles",
     });
-
+    // retourner url ET public_id
     res.json({ url: result.secure_url, public_id: result.public_id });
   } catch (err) {
     console.error("Upload error:", err);
@@ -51,12 +45,12 @@ app.post("/api/upload", async (req, res) => {
   }
 });
 
-// ✅ Route test
+// Route test
 app.get("/", (req, res) => {
   res.send("Hello Backend 🚀");
 });
 
-// ✅ Start server
+// Lancement du serveur
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
